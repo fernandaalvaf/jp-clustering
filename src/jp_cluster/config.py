@@ -21,33 +21,68 @@ class Paths(BaseModel):
 NormStage = Literal["raw", "transnormer", "transnormer_lemma"]
 ChunkMode = Literal["letter", "sliding_512"]
 
+# Short, Chroma-safe slugs for known model IDs
+_MODEL_SLUGS: dict[str, str] = {
+    "intfloat/multilingual-e5-large-instruct": "me5l",
+    "intfloat/multilingual-e5-base": "me5b",
+    "jinaai/jina-embeddings-v3": "jinav3",
+    "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": "mpnet",
+}
+
+
+def _model_slug(model_id: str) -> str:
+    """Return a short Chroma-safe slug. Falls back to the part after '/' lowercased."""
+    if model_id in _MODEL_SLUGS:
+        return _MODEL_SLUGS[model_id]
+    base = model_id.split("/")[-1].lower()
+    # keep only alphanumeric, dots, hyphens, underscores; max 20 chars
+    safe = "".join(c if c.isalnum() or c in "._-" else "-" for c in base)[:20]
+    return safe
+
 
 class Variant(BaseModel):
-    """One row of the variant matrix. ID is stable, used as Chroma collection name."""
+    """One cell of the variant matrix: norm × chunk × model."""
 
     id: str
     norm: NormStage
     chunk: ChunkMode
+    model: str  # HuggingFace model ID
+
+    @property
+    def model_slug(self) -> str:
+        return _model_slug(self.model)
 
     @property
     def collection_name(self) -> str:
-        return f"jp_{self.norm}_{self.chunk}"
+        return f"jp_{self.norm}_{self.chunk}_{self.model_slug}"
 
 
-# 3 norm stages × 2 chunk modes = 6 variants
-VARIANTS: list[Variant] = [
-    Variant(id="v1", norm="raw", chunk="letter"),
-    Variant(id="v2", norm="raw", chunk="sliding_512"),
-    Variant(id="v3", norm="transnormer", chunk="letter"),
-    Variant(id="v4", norm="transnormer", chunk="sliding_512"),
-    Variant(id="v5", norm="transnormer_lemma", chunk="letter"),
-    Variant(id="v6", norm="transnormer_lemma", chunk="sliding_512"),
-]
+def _build_variants(
+    norms: list[NormStage],
+    chunks: list[ChunkMode],
+    models: list[str],
+) -> list[Variant]:
+    """Generate all norm × chunk × model combinations, numbered v1…vN."""
+    rows: list[Variant] = []
+    i = 1
+    for norm in norms:
+        for chunk in chunks:
+            for model in models:
+                rows.append(Variant(id=f"v{i}", norm=norm, chunk=chunk, model=model))
+                i += 1
+    return rows
 
 
 class EmbedCfg(BaseModel):
-    # multilingual-e5 trägt für historisches DE meist robuster als jina-v3 in unseren correspSearch-Tests
-    model: str = "intfloat/multilingual-e5-large-instruct"
+    # Candidate models to evaluate; first entry is the default / fastest
+    models: list[str] = [
+        "intfloat/multilingual-e5-large-instruct",
+    ]
+    # Convenience accessor — use models[0] as the single-model default
+    @property
+    def model(self) -> str:
+        return self.models[0]
+
     batch_size: int = 16
     device: str = "cuda"  # "cpu" als Fallback, CLI-Override
     # E5 verlangt Prefix; "passage:" für indexierte Dokumente, "query:" für Suchanfragen
@@ -90,3 +125,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Build the variant matrix from the active config at import time
+VARIANTS: list[Variant] = _build_variants(
+    norms=["raw", "transnormer", "transnormer_lemma"],
+    chunks=["letter", "sliding_512"],
+    models=settings.embed.models,
+)

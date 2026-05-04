@@ -21,8 +21,10 @@ from jp_cluster.models import Chunk
 
 
 class Embedder:
-    def __init__(self) -> None:
-        self.model = SentenceTransformer(settings.embed.model, device=settings.embed.device)
+    def __init__(self, model_name: str | None = None) -> None:
+        name = model_name or settings.embed.model
+        self.model_name = name
+        self.model = SentenceTransformer(name, device=settings.embed.device)
         self.model.max_seq_length = settings.embed.max_seq_len
 
     def encode(self, texts: list[str]) -> np.ndarray:
@@ -47,7 +49,12 @@ def write_variant(variant: Variant, chunks: list[Chunk], embedder: Embedder) -> 
     client = _client(settings.paths.chroma)
     coll = client.get_or_create_collection(
         name=variant.collection_name,
-        metadata={"norm": variant.norm, "chunk": variant.chunk, "model": settings.embed.model},
+        metadata={
+            "norm": variant.norm,
+            "chunk": variant.chunk,
+            "model": variant.model,
+            "model_slug": variant.model_slug,
+        },
     )
 
     bs = 64
