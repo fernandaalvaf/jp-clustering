@@ -1,6 +1,6 @@
 # Jean-Paul-Cluster
 
-Semantische Cluster-Analyse der Korrespondenz Jean Pauls. TELOTA-Challenge-Prototyp.
+Semantische Cluster-Analyse der Korrespondenz Jean Pauls. TELOTA-Challenge-Prototyp (22 h).
 
 ## Setup
 
