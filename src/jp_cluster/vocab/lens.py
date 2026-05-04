@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from jp_cluster.models import Letter
+from jp_cluster.models.data import Letter
 
 
 def load_vocab(path: Path | None) -> pd.DataFrame:

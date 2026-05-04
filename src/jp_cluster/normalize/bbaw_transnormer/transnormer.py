@@ -40,7 +40,7 @@ from pathlib import Path
 
 import torch
 
-from worker import worker_loop
+from jp_cluster.normalize.bbaw_transnormer.worker import worker_loop
 from jp_cluster.utils.text_splitting import split_sentences
 
 logger = logging.getLogger(__name__)
@@ -515,10 +515,12 @@ def main() -> None:
     )
 
     if do_benchmark:
+        assert isinstance(result, tuple)
         results, stats = result
         _write_benchmark_csv(args.benchmark, stats)
         logger.info(f"Benchmark row appended to {args.benchmark}")
     else:
+        assert isinstance(result, dict)
         results = result
 
     # Write outputs
