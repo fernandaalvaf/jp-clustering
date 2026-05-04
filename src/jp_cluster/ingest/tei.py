@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Iterator
 
-from jp_cluster.models import Letter
+from jp_cluster.models.data import Letter
 
 
 def iter_letters(json_path: Path) -> Iterator[Letter]:

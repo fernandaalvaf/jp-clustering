@@ -17,13 +17,8 @@ app = typer.Typer(add_completion=False, help="Jean-Paul-Cluster pipeline.")
 
 
 @app.command()
-<<<<<<< HEAD
 def ingest(json_file: Path = typer.Argument(..., help="Path to extracted.json")) -> None:
     """Stage 1: extracted.json → letters.jsonl"""
-=======
-def ingest(tei_dir: Path = typer.Argument(..., help="Folder with TEI XML files")) -> None:
-    """Stage 1 (TEI): TEI XML folder → letters.jsonl"""
->>>>>>> da3a6dc (Embedding work)
     from jp_cluster.ingest.tei import iter_letters
 
     settings.ensure_dirs()
@@ -81,7 +76,7 @@ def _load_letters() -> dict[str, Letter]:
 
 
 @app.command()
-def normalize_chunk(variant_id: str = typer.Option(..., help="z.B. v1, v2 …")) -> None:
+def normalize_chunk(variant_id: str = typer.Option(..., help="z.B. jp_raw_letter_me5l")) -> None:
     """Stage 2 + 3: normalisieren + chunken für eine Variante. Persistiert chunks_<id>.pkl."""
     from jp_cluster.chunk import strategies as ch
     from jp_cluster.normalize import pipeline as norm
@@ -102,7 +97,7 @@ def normalize_chunk(variant_id: str = typer.Option(..., help="z.B. v1, v2 …"))
 
 
 @app.command()
-def chunk(variant_id: str = typer.Option(..., help="z.B. v1, v2 …")) -> None:
+def chunk(variant_id: str = typer.Option(..., help="z.B. jp_raw_letter_me5l")) -> None:
     """Stage 3 (fast path): chunk pre-computed normalized files → chunks_<id>.pkl.
 
     Reads text from data/processed/normalized/<norm_stage>/<letter_id>.normalized.txt

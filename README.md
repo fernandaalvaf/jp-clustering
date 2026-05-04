@@ -19,9 +19,9 @@ pip install transnormer  # bzw. transformers-Modell direkt ziehen
 jpc ingest data/raw/jp-tei/
 
 # 2-5. Eine Variante end-to-end
-jpc normalize-chunk v1
-jpc embed v1
-jpc cluster v1
+jpc normalize-chunk jp_raw_letter_me5l
+jpc embed jp_raw_letter_me5l
+jpc cluster jp_raw_letter_me5l
 
 # Alle 6 Varianten
 jpc run-all
@@ -32,14 +32,14 @@ jpc app-streamlit
 
 ## Variantenmatrix
 
-| ID | Normalisierung      | Chunking      |
-|----|---------------------|---------------|
-| v1 | raw                 | letter        |
-| v2 | raw                 | sliding 512   |
-| v3 | transnormer         | letter        |
-| v4 | transnormer         | sliding 512   |
-| v5 | transnormer + lemma | letter        |
-| v6 | transnormer + lemma | sliding 512   |
+| ID                              | Normalisierung      | Chunking      |
+|---------------------------------|---------------------|---------------|
+| jp_raw_letter_me5l              | raw                 | letter        |
+| jp_raw_sliding_512_me5l         | raw                 | sliding 512   |
+| jp_transnormer_letter_me5l      | transnormer         | letter        |
+| jp_transnormer_sliding_512_me5l | transnormer         | sliding 512   |
+| jp_transnormer_lemma_letter_me5l      | transnormer + lemma | letter        |
+| jp_transnormer_lemma_sliding_512_me5l | transnormer + lemma | sliding 512   |
 
 Jede Variante schreibt in eine eigene Chroma-Collection und produziert ein Eval-JSON.
 
