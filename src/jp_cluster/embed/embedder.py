@@ -108,8 +108,10 @@ def load_letter_matrix(variant: Variant) -> tuple[list[str], np.ndarray]:
     coll = client.get_collection(name=variant.collection_name)
     data = coll.get(include=["embeddings", "metadatas"])
 
+    embeddings = data["embeddings"] if data["embeddings"] is not None else []
+    metadatas = data["metadatas"] if data["metadatas"] is not None else []
     by_letter: dict[str, list[np.ndarray]] = {}
-    for emb, meta in zip(data["embeddings"] or [], data["metadatas"] or [], strict=True):
+    for emb, meta in zip(embeddings, metadatas, strict=True):
         by_letter.setdefault(str(meta["letter_id"]), []).append(np.asarray(emb, dtype=np.float32))
 
     letter_ids = sorted(by_letter)
