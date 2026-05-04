@@ -86,6 +86,10 @@ class EmbedCfg(BaseModel):
     # Candidate models to evaluate; first entry is the default / fastest
     models: list[str] = [
         "intfloat/multilingual-e5-large-instruct",
+        "intfloat/multilingual-e5-base",
+        "jinaai/jina-embeddings-v3",
+        "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+        "codefuse-ai/F2LLM-v2-14B",
     ]
     # Convenience accessor — use models[0] as the single-model default
     @property

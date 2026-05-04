@@ -32,15 +32,42 @@ def normalize_raw(text: str) -> str:
 
 @lru_cache(maxsize=1)
 def _transnormer():
-    """Lazy load. Falls Modell nicht greifbar, fällt der Caller auf raw zurück."""
+    """Lazy load. Falls Modell nicht greifbar, fällt der Caller auf raw zurück.
+
+    Returns a callable with the same interface as the old transformers pipeline:
+        pipe(text_or_list) -> list[{"generated_text": str}]
+
+    Uses AutoModelForSeq2SeqLM directly to avoid the removed
+    ``text2text-generation`` pipeline task in transformers ≥ 5.
+    """
     try:
-        from transformers import pipeline
-        # Modell-ID ggf. an aktuell verfügbares Release anpassen
-        return pipeline(
-            "text2text-generation",
-            model="ybracke/transnormer-19c-beta-v02",
-            max_length=512,
-        )
+        import torch
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+        model_id = "ybracke/transnormer-19c-beta-v02"
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = model.to(device).eval()
+
+        def _infer(texts: str | list[str]) -> list[dict[str, str]]:
+            if isinstance(texts, str):
+                texts = [texts]
+            inputs = tokenizer(
+                texts,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=512,
+            ).to(device)
+            with torch.no_grad():
+                ids = model.generate(**inputs, max_new_tokens=512)
+            return [
+                {"generated_text": tokenizer.decode(o, skip_special_tokens=True)}
+                for o in ids
+            ]
+
+        return _infer
     except Exception as e:  # noqa: BLE001
         print(f"[normalize] transnormer nicht verfügbar ({e}); raw fallback aktiv")
         return None
