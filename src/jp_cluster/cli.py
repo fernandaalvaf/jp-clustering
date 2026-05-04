@@ -17,15 +17,15 @@ app = typer.Typer(add_completion=False, help="Jean-Paul-Cluster pipeline.")
 
 
 @app.command()
-def ingest(tei_dir: Path = typer.Argument(..., help="Folder with TEI XML files")) -> None:
-    """Stage 1: TEI → letters.jsonl"""
+def ingest(json_file: Path = typer.Argument(..., help="Path to extracted.json")) -> None:
+    """Stage 1: extracted.json → letters.jsonl"""
     from jp_cluster.ingest.tei import iter_letters
 
     settings.ensure_dirs()
     out = settings.paths.interim / "letters.jsonl"
     n = 0
     with out.open("w", encoding="utf-8") as f:
-        for letter in iter_letters(tei_dir):
+        for letter in iter_letters(json_file):
             f.write(letter.model_dump_json() + "\n")
             n += 1
     print(f"[green]wrote {n} letters → {out}[/green]")
