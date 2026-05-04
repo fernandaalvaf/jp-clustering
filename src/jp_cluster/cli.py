@@ -11,14 +11,19 @@ from rich import print
 from tqdm import tqdm
 
 from jp_cluster.config import VARIANTS, settings
-from jp_cluster.models import Letter
+from jp_cluster.models.data import Letter
 
 app = typer.Typer(add_completion=False, help="Jean-Paul-Cluster pipeline.")
 
 
 @app.command()
+<<<<<<< HEAD
 def ingest(json_file: Path = typer.Argument(..., help="Path to extracted.json")) -> None:
     """Stage 1: extracted.json → letters.jsonl"""
+=======
+def ingest(tei_dir: Path = typer.Argument(..., help="Folder with TEI XML files")) -> None:
+    """Stage 1 (TEI): TEI XML folder → letters.jsonl"""
+>>>>>>> da3a6dc (Embedding work)
     from jp_cluster.ingest.tei import iter_letters
 
     settings.ensure_dirs()
@@ -26,6 +31,40 @@ def ingest(json_file: Path = typer.Argument(..., help="Path to extracted.json"))
     n = 0
     with out.open("w", encoding="utf-8") as f:
         for letter in iter_letters(json_file):
+            f.write(letter.model_dump_json() + "\n")
+            n += 1
+    print(f"[green]wrote {n} letters → {out}[/green]")
+
+
+@app.command(name="ingest-json")
+def ingest_json(
+    json_path: Path = typer.Argument(
+        None,
+        help="Path to extracted.json (default: data/raw/extracted.json)",
+    ),
+) -> None:
+    """Stage 1 (JSON): extracted.json → letters.jsonl
+
+    Each entry must have 'document_id' and 'raw_text'. Optional: 'xml_path'.
+    """
+    if json_path is None:
+        json_path = settings.paths.raw / "extracted.json"
+
+    if not json_path.exists():
+        print(f"[red]File not found: {json_path}[/red]")
+        raise typer.Exit(1)
+
+    settings.ensure_dirs()
+    records = json.loads(json_path.read_text(encoding="utf-8"))
+    out = settings.paths.interim / "letters.jsonl"
+    n = 0
+    with out.open("w", encoding="utf-8") as f:
+        for rec in records:
+            letter = Letter(
+                id=rec["document_id"],
+                text_raw=rec["raw_text"],
+                tei_path=rec.get("xml_path"),
+            )
             f.write(letter.model_dump_json() + "\n")
             n += 1
     print(f"[green]wrote {n} letters → {out}[/green]")
@@ -59,6 +98,41 @@ def normalize_chunk(variant_id: str = typer.Option(..., help="z.B. v1, v2 …"))
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("wb") as f:
         pickle.dump(chunks, f)
+    print(f"[green]{variant.id}: {len(chunks)} chunks → {out}[/green]")
+
+
+@app.command()
+def chunk(variant_id: str = typer.Option(..., help="z.B. v1, v2 …")) -> None:
+    """Stage 3 (fast path): chunk pre-computed normalized files → chunks_<id>.pkl.
+
+    Reads text from data/processed/normalized/<norm_stage>/<letter_id>.normalized.txt
+    instead of re-running the normalization models.  Falls back to on-the-fly
+    normalization for any letter whose file is missing.
+    """
+    from jp_cluster.chunk import strategies as ch
+    from jp_cluster.normalize.pipeline import apply as norm_apply
+    from jp_cluster.normalize.pipeline import read_precomputed
+
+    variant = next(v for v in VARIANTS if v.id == variant_id)
+    letters = _load_letters()
+    norm_base = settings.paths.processed / "normalized"
+
+    chunks = []
+    missing = 0
+    for letter in tqdm(letters.values(), desc=f"chunk {variant.id}"):
+        text = read_precomputed(letter, variant.norm, norm_base)
+        if text is None:
+            text = norm_apply(letter, variant.norm)
+            if variant.norm != "raw":
+                missing += 1
+        chunks.extend(ch.apply(letter, text, variant.chunk, variant.norm))
+
+    out = settings.paths.processed / f"chunks_{variant.id}.pkl"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("wb") as f:
+        pickle.dump(chunks, f)
+    if missing:
+        print(f"[yellow]{missing} letter(s) had no pre-computed file; fell back to on-the-fly normalization[/yellow]")
     print(f"[green]{variant.id}: {len(chunks)} chunks → {out}[/green]")
 
 

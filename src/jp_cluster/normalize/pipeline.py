@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import re
 from functools import lru_cache
+from pathlib import Path
 from typing import Protocol
 
-from jp_cluster.models import Letter
+from jp_cluster.models.data import Letter
 
 
 class Normalizer(Protocol):
@@ -96,3 +97,31 @@ NORMALIZERS: dict[str, Normalizer] = {
 
 def apply(letter: Letter, stage: str) -> str:
     return NORMALIZERS[stage](letter.text_raw)
+
+
+def read_precomputed(letter: Letter, stage: str, norm_base: Path) -> str | None:
+    """Read pre-computed normalized text from disk; return None if not available.
+
+    ``transnormer_lemma`` piggybacks on the transnormer files and applies
+    spaCy lemmatisation on top so that we never have to rerun the model.
+    ``raw`` has no pre-computed files — the caller should use ``letter.text_raw``.
+    """
+    src_stage = "transnormer" if stage == "transnormer_lemma" else stage
+    if src_stage == "raw":
+        return None
+
+    norm_file = norm_base / src_stage / f"{letter.id}.normalized.txt"
+    if not norm_file.exists():
+        return None
+
+    text = norm_file.read_text(encoding="utf-8").strip()
+
+    if stage == "transnormer_lemma":
+        nlp = _spacy()
+        if nlp is not None:
+            doc = nlp(text)
+            return " ".join(
+                tok.lemma_.lower() for tok in doc if not tok.is_space and not tok.is_punct
+            )
+
+    return text

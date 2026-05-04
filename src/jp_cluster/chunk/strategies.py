@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from jp_cluster.config import settings
-from jp_cluster.models import Chunk, Letter
+from jp_cluster.models.data import Chunk, Letter
 
 
 @lru_cache(maxsize=1)
