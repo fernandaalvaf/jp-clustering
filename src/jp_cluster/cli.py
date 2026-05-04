@@ -17,13 +17,9 @@ app = typer.Typer(add_completion=False, help="Jean-Paul-Cluster pipeline.")
 
 
 @app.command()
-<<<<<<< HEAD
 def ingest(json_file: Path = typer.Argument(..., help="Path to extracted.json")) -> None:
     """Stage 1: extracted.json → letters.jsonl"""
-=======
-def ingest(tei_dir: Path = typer.Argument(..., help="Folder with TEI XML files")) -> None:
-    """Stage 1 (TEI): TEI XML folder → letters.jsonl"""
->>>>>>> da3a6dc (Embedding work)
+
     from jp_cluster.ingest.tei import iter_letters
 
     settings.ensure_dirs()
