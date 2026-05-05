@@ -35,6 +35,12 @@ BFLOAT16_MODELS: frozenset[str] = frozenset({
     "codefuse-ai/F2LLM-v2-14B",
 })
 
+# Per-model batch size overrides (otherwise EmbedCfg.batch_size is used).
+# Large LLM-based encoders need much smaller batches to fit on a single GPU.
+MODEL_BATCH_SIZE: dict[str, int] = {
+    "codefuse-ai/F2LLM-v2-14B": 1,
+}
+
 
 def _model_slug(model_id: str) -> str:
     """Return a short Chroma-safe slug. Falls back to the part after '/' lowercased."""
@@ -111,9 +117,11 @@ class ChunkCfg(BaseModel):
 
 
 class ClusterCfg(BaseModel):
-    # HDBSCAN-Defaults für ~1–5k Briefe; bei kleinerem Korpus über CLI senken
-    hdbscan_min_cluster_size: int = 8
-    hdbscan_min_samples: int = 3
+    # HDBSCAN-Defaults für kleines Korpus (~100 Briefe).
+    # Frühere Defaults (8/3) ließen HDBSCAN auf 98 Briefen fast immer kollabieren
+    # (alles als Noise, n_clusters=0). Für größere Korpora via env hochsetzen.
+    hdbscan_min_cluster_size: int = 3
+    hdbscan_min_samples: int = 2
     hdbscan_metric: str = "euclidean"  # auf L2-normalisierten Embeddings ≈ cosine
     agglomerative_n_clusters: int = 25
     umap_n_neighbors: int = 15

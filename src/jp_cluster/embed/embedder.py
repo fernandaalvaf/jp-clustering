@@ -16,7 +16,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-from jp_cluster.config import BFLOAT16_MODELS, Variant, settings
+from jp_cluster.config import BFLOAT16_MODELS, MODEL_BATCH_SIZE, Variant, settings
 from jp_cluster.models.data import Chunk
 
 
@@ -24,21 +24,36 @@ class Embedder:
     def __init__(self, model_name: str | None = None) -> None:
         name = model_name or settings.embed.model
         self.model_name = name
+        self.batch_size = MODEL_BATCH_SIZE.get(name, settings.embed.batch_size)
         model_kwargs = {"torch_dtype": "bfloat16"} if name in BFLOAT16_MODELS else {}
         self.model = SentenceTransformer(
-            name, device=settings.embed.device, model_kwargs=model_kwargs or None
+            name,
+            device=settings.embed.device,
+            model_kwargs=model_kwargs or None,
+            trust_remote_code=True,
         )
         self.model.max_seq_length = settings.embed.max_seq_len
         # True for models that expose encode_document / encode_query (e.g. F2LLM)
         self._asymmetric = hasattr(self.model, "encode_document")
+        # Jina v3 needs an explicit task instead of the generic encode_document API
+        self._is_jina_v3 = "jina-embeddings-v3" in name
 
     def encode(self, texts: list[str]) -> np.ndarray:
         """Encode a list of passages/documents and return L2-normalised embeddings."""
-        if self._asymmetric:
+        if self._is_jina_v3:
+            emb = self.model.encode(
+                texts,
+                task="retrieval.passage",
+                batch_size=self.batch_size,
+                show_progress_bar=False,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
+        elif self._asymmetric:
             # Asymmetric models handle prompting internally
             emb = self.model.encode_document(
                 texts,
-                batch_size=settings.embed.batch_size,
+                batch_size=self.batch_size,
                 show_progress_bar=False,
                 convert_to_numpy=True,
                 normalize_embeddings=True,
@@ -47,7 +62,7 @@ class Embedder:
             prefixed = [settings.embed.passage_prefix + t for t in texts]
             emb = self.model.encode(
                 prefixed,
-                batch_size=settings.embed.batch_size,
+                batch_size=self.batch_size,
                 show_progress_bar=False,
                 convert_to_numpy=True,
                 normalize_embeddings=True,  # L2-norm; Cosine == Dot-Product
@@ -56,7 +71,14 @@ class Embedder:
 
     def encode_query(self, query: str) -> np.ndarray:
         """Encode a single query string (used for retrieval / eval)."""
-        if self._asymmetric:
+        if self._is_jina_v3:
+            emb = self.model.encode(
+                query,
+                task="retrieval.query",
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
+        elif self._asymmetric:
             emb = self.model.encode_query(
                 query,
                 convert_to_numpy=True,
@@ -78,9 +100,18 @@ def _client(persist_dir: Path):
 
 
 def write_variant(variant: Variant, chunks: list[Chunk], embedder: Embedder) -> None:
-    """Embed all chunks of one variant and persist to its Chroma collection."""
+    """Embed all chunks of one variant and persist to its Chroma collection.
+
+    The collection is recreated from scratch so that re-runs with a different
+    model (different embedding dim) or a changed chunking don't leave stale
+    vectors behind.
+    """
     client = _client(settings.paths.chroma)
-    coll = client.get_or_create_collection(
+    try:
+        client.delete_collection(name=variant.collection_name)
+    except Exception:
+        pass
+    coll = client.create_collection(
         name=variant.collection_name,
         metadata={
             "norm": variant.norm,

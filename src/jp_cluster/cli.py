@@ -140,7 +140,7 @@ def embed(variant_id: str) -> None:
     chunks_path = settings.paths.processed / f"chunks_{variant.id}.pkl"
     with chunks_path.open("rb") as f:
         chunks = pickle.load(f)
-    write_variant(variant, chunks, Embedder())
+    write_variant(variant, chunks, Embedder(variant.model))
     print(f"[green]embedded → collection {variant.collection_name}[/green]")
 
 

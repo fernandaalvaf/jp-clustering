@@ -9,9 +9,10 @@ dependencies = [
     # TEI / XML
     "lxml>=5.2",
     # Embeddings
-    "sentence-transformers>=3.0",
+    "sentence-transformers>=3.0,<6",
     "torch==2.4.1",
-    "transformers>=4.44",
+    "transformers>=4.44,<5",
+    "einops>=0.8",
     # Vector store
     "chromadb>=0.5",
     # Clustering / ML
@@ -20,6 +21,7 @@ dependencies = [
     "umap-learn>=0.5.6",
     # Normalisation (transnormer-Modell wird via transformers geladen, kein pip-Paket nötig)
     "spacy>=3.7",
+    "de-core-news-lg",
     # Viz / App
     "streamlit>=1.38",
     "pyvis>=0.3.2",
@@ -80,3 +82,4 @@ explicit = true
 
 [tool.uv.sources]
 torch = { index = "pytorch-cu121" }
+de-core-news-lg = { url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_lg-3.8.0/de_core_news_lg-3.8.0-py3-none-any.whl" }
