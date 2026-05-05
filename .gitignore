@@ -41,3 +41,5 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+src/jp_cluster/__pycache__/config.cpython-314.pyc
+src/jp_cluster/__pycache__/cli.cpython-314.pyc

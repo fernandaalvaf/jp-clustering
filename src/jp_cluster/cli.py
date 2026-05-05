@@ -11,7 +11,7 @@ from rich import print
 from tqdm import tqdm
 
 from jp_cluster.config import VARIANTS, settings
-from jp_cluster.models import Letter
+from jp_cluster.models.data import Letter
 
 app = typer.Typer(add_completion=False, help="Jean-Paul-Cluster pipeline.")
 

@@ -12,7 +12,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Protocol
 
-from jp_cluster.models import Letter
+from jp_cluster.models.data import Letter
 
 
 class Normalizer(Protocol):

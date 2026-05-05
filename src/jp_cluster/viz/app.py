@@ -16,7 +16,7 @@ import plotly.express as px
 import streamlit as st
 
 from jp_cluster.config import VARIANTS, settings
-from jp_cluster.models import Letter
+from jp_cluster.models.data import Letter
 from jp_cluster.viz.network import knn_edges
 from jp_cluster.vocab.lens import cluster_subject_heatmap, tfidf_labels
 
