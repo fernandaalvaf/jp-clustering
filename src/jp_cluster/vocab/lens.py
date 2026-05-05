@@ -49,8 +49,11 @@ def tfidf_labels(
     """TF-IDF auf Brieftexten, Top-Terme pro Cluster als Label."""
     from sklearn.feature_extraction.text import TfidfVectorizer
 
+    from jp_cluster.clean.cleaner import STOP_WORDS
+    stop_words = list(STOP_WORDS)
+
     docs = [letters[lid].text_raw for lid in letter_ids]
-    vec = TfidfVectorizer(max_df=0.7, min_df=3, ngram_range=(1, 2))
+    vec = TfidfVectorizer(max_df=0.7, min_df=3, ngram_range=(1, 2), stop_words=stop_words)
     X = vec.fit_transform(docs)
     terms = np.array(vec.get_feature_names_out())
 

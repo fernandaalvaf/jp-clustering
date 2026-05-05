@@ -167,6 +167,21 @@ def cluster(variant_id: str) -> None:
     print(metrics)
 
 
+@app.command()
+def clean(variant: str = typer.Argument(None, help="Variant subfolder to clean (e.g. transnormer). Omit to clean all.")) -> None:
+    """Remove stop words from normalized texts → data/processed/cleaned/."""
+    from jp_cluster.clean.cleaner import clean_all, clean_variant
+
+    normalized_dir = settings.paths.processed / "normalized"
+    cleaned_dir = settings.paths.processed / "cleaned"
+
+    if variant:
+        n = clean_variant(normalized_dir, cleaned_dir, variant)
+        print(f"[green]{variant}: {n} files → {cleaned_dir / variant}[/green]")
+    else:
+        clean_all(normalized_dir, cleaned_dir)
+
+
 @app.command(name="run-all")
 def run_all() -> None:
     """Convenience: alle 6 Varianten end-to-end (nach `ingest`)."""
