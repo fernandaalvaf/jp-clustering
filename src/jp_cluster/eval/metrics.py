@@ -14,7 +14,7 @@ import pandas as pd
 from sklearn.metrics import adjusted_mutual_info_score, silhouette_score
 
 from jp_cluster.cluster.algorithms import ClusterResult
-from jp_cluster.models import Letter
+from jp_cluster.models.data import Letter
 
 
 def _decade(year: int | None) -> int | None:

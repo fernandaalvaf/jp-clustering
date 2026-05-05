@@ -16,30 +16,63 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-from jp_cluster.config import Variant, settings
-from jp_cluster.models import Chunk
+from jp_cluster.config import BFLOAT16_MODELS, Variant, settings
+from jp_cluster.models.data import Chunk
 
 
 class Embedder:
     def __init__(self, model_name: str | None = None) -> None:
         name = model_name or settings.embed.model
         self.model_name = name
-        self.model = SentenceTransformer(name, device=settings.embed.device)
+        model_kwargs = {"torch_dtype": "bfloat16"} if name in BFLOAT16_MODELS else {}
+        self.model = SentenceTransformer(
+            name, device=settings.embed.device, model_kwargs=model_kwargs or None
+        )
         self.model.max_seq_length = settings.embed.max_seq_len
+        # True for models that expose encode_document / encode_query (e.g. F2LLM)
+        self._asymmetric = hasattr(self.model, "encode_document")
 
     def encode(self, texts: list[str]) -> np.ndarray:
-        prefixed = [settings.embed.passage_prefix + t for t in texts]
-        emb = self.model.encode(
-            prefixed,
-            batch_size=settings.embed.batch_size,
-            show_progress_bar=False,
-            convert_to_numpy=True,
-            normalize_embeddings=True,  # L2-norm; Cosine == Dot-Product
-        )
-        return emb
+        """Encode a list of passages/documents and return L2-normalised embeddings."""
+        if self._asymmetric:
+            # Asymmetric models handle prompting internally
+            emb = self.model.encode_document(
+                texts,
+                batch_size=settings.embed.batch_size,
+                show_progress_bar=False,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
+        else:
+            prefixed = [settings.embed.passage_prefix + t for t in texts]
+            emb = self.model.encode(
+                prefixed,
+                batch_size=settings.embed.batch_size,
+                show_progress_bar=False,
+                convert_to_numpy=True,
+                normalize_embeddings=True,  # L2-norm; Cosine == Dot-Product
+            )
+        return np.asarray(emb, dtype=np.float32)
+
+    def encode_query(self, query: str) -> np.ndarray:
+        """Encode a single query string (used for retrieval / eval)."""
+        if self._asymmetric:
+            emb = self.model.encode_query(
+                query,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
+        else:
+            prefixed = settings.embed.query_prefix + query
+            emb = self.model.encode(
+                prefixed,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
+        return np.asarray(emb, dtype=np.float32)
 
 
-def _client(persist_dir: Path) -> chromadb.api.ClientAPI:
+def _client(persist_dir: Path):
     persist_dir.mkdir(parents=True, exist_ok=True)
     return chromadb.PersistentClient(path=str(persist_dir))
 
@@ -75,9 +108,11 @@ def load_letter_matrix(variant: Variant) -> tuple[list[str], np.ndarray]:
     coll = client.get_collection(name=variant.collection_name)
     data = coll.get(include=["embeddings", "metadatas"])
 
+    embeddings = data["embeddings"] if data["embeddings"] is not None else []
+    metadatas = data["metadatas"] if data["metadatas"] is not None else []
     by_letter: dict[str, list[np.ndarray]] = {}
-    for emb, meta in zip(data["embeddings"], data["metadatas"], strict=True):
-        by_letter.setdefault(meta["letter_id"], []).append(np.asarray(emb, dtype=np.float32))
+    for emb, meta in zip(embeddings, metadatas, strict=True):
+        by_letter.setdefault(str(meta["letter_id"]), []).append(np.asarray(emb, dtype=np.float32))
 
     letter_ids = sorted(by_letter)
     pooled = np.stack([

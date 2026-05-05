@@ -40,7 +40,7 @@ from pathlib import Path
 
 import torch
 
-from worker import worker_loop
+from jp_cluster.normalize.bbaw_transnormer.worker import worker_loop
 from jp_cluster.utils.text_splitting import split_sentences
 
 logger = logging.getLogger(__name__)
@@ -210,9 +210,9 @@ def normalize_files(
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS,
     num_beams: int = DEFAULT_NUM_BEAMS,
     num_gpus: int | None = None,
-    models_per_gpu: int = 1,
+    models_per_gpu: int = 4,
     use_compile: bool = True,
-    use_fp16: bool = True,
+    use_fp16: bool = False,
     length_bucketed: bool = True,
     length_multiplier: float = DEFAULT_LENGTH_MULTIPLIER,
     benchmark: bool = False,
@@ -515,10 +515,12 @@ def main() -> None:
     )
 
     if do_benchmark:
+        assert isinstance(result, tuple)
         results, stats = result
         _write_benchmark_csv(args.benchmark, stats)
         logger.info(f"Benchmark row appended to {args.benchmark}")
     else:
+        assert isinstance(result, dict)
         results = result
 
     # Write outputs
