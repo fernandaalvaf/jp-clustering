@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from sklearn.metrics import adjusted_mutual_info_score
 
 from jp_cluster.config import VARIANTS, settings
 from jp_cluster.models.data import Letter
@@ -21,6 +22,31 @@ from jp_cluster.viz.network import knn_edges
 from jp_cluster.vocab.lens import cluster_subject_heatmap, tfidf_labels
 
 st.set_page_config(page_title="Jean Paul · Korrespondenz-Cluster", layout="wide")
+
+
+@st.cache_data
+def load_lda_distributions() -> pd.DataFrame | None:
+    path = settings.paths.processed.parent / "LDA_comparison" / "topic_distributions.tsv"
+    if not path.exists():
+        return None
+    df = pd.read_csv(path, sep="\t", header=None)
+    n_topics = df.shape[1] - 2
+    df.columns = ["row_idx", "letter_id"] + [f"topic_{i}" for i in range(n_topics)]
+    return df.drop(columns=["row_idx"]).set_index("letter_id")
+
+
+@st.cache_data
+def load_lda_topics() -> pd.DataFrame | None:
+    path = settings.paths.processed.parent / "LDA_comparison" / "topic_key.tsv"
+    if not path.exists():
+        return None
+    df = pd.read_csv(
+        path, sep="\t", header=None, names=["topic_id", "weight", "terms"],
+        dtype={"weight": str, "terms": str},
+    )
+    df["weight"] = df["weight"].str.replace(",", ".").astype(float)
+    df["terms"] = df["terms"].fillna("")
+    return df.set_index("topic_id")
 
 
 @st.cache_data
@@ -102,8 +128,8 @@ c4.metric("AMI vs. Adressat", f"{metrics.get('ami_hdb_vs_addressee', 0):.3f}",
           help="Hoch = Cluster spiegeln vor allem Adressaten wider (trivial). "
                "Niedrig + hohe Silhouette = inhaltliche Struktur jenseits der Empfänger.")
 
-tab_scatter, tab_net, tab_letter, tab_vocab = st.tabs(
-    ["UMAP-Scatter", "Netzwerk", "Brief-Detail", "Vokabular-Lens"]
+tab_scatter, tab_net, tab_letter, tab_vocab, tab_lda = st.tabs(
+    ["UMAP-Scatter", "Netzwerk", "Brief-Detail", "Vokabular-Lens", "LDA-Vergleich"]
 )
 
 with tab_scatter:
@@ -240,3 +266,99 @@ with tab_vocab:
         st.dataframe(heat[top_cols].astype(int), use_container_width=True)
     else:
         st.info("Keine Register-Tags im Korpus gefunden.")
+
+with tab_lda:
+    st.markdown(
+        "Vergleich mit einem LDA-Modell (Latent Dirichlet Allocation), das separat auf demselben Korpus trainiert wurde. "
+        "LDA ist ein klassischer Bag-of-Words-Ansatz; die semantischen Cluster oben basieren auf dichten Satz-Embeddings. "
+        "Die Scatter-Projektion nutzt dieselben UMAP-Koordinaten, färbt Briefe aber nach dem **dominanten LDA-Thema** ein (höchste Wahrscheinlichkeit). "
+        "Die Kreuztabelle zeigt, wie stark LDA-Themen und semantische Cluster überlappen — diagonale Blöcke deuten auf Übereinstimmung hin."
+    )
+
+    lda_dist = load_lda_distributions()
+    lda_topics = load_lda_topics()
+
+    if lda_dist is None:
+        st.error("LDA-Verteilungsdatei nicht gefunden: data/LDA_comparison/topic_distributions.tsv")
+    else:
+        topic_cols = [c for c in lda_dist.columns if c.startswith("topic_")]
+        lda_dominant = lda_dist[topic_cols].idxmax(axis=1).str.replace("topic_", "").astype(int)
+
+        lda_for_letters = [
+            int(lda_dominant[lid]) if lid in lda_dominant.index else -1
+            for lid in result.letter_ids
+        ]
+
+        # --- UMAP scatter colored by dominant LDA topic ---
+        st.markdown("### UMAP-Projektion · Dominantes LDA-Thema")
+        palette_50 = px.colors.qualitative.Alphabet + px.colors.qualitative.Dark24
+        unique_lda = sorted(set(lda_for_letters))
+        lda_color_map: dict[str, str] = {}
+        ci = 0
+        for t in unique_lda:
+            if t == -1:
+                lda_color_map["-1"] = "#cccccc"
+            else:
+                lda_color_map[str(t)] = palette_50[ci % len(palette_50)]
+                ci += 1
+
+        df_lda_scatter = pd.DataFrame({
+            "x": result.umap_xy[:, 0],
+            "y": result.umap_xy[:, 1],
+            "LDA-Thema": [str(t) for t in lda_for_letters],
+            "letter_id": result.letter_ids,
+            "addressee": [letters[lid].addressee or "?" for lid in result.letter_ids],
+            "year": [letters[lid].date_iso.year if letters[lid].date_iso else None
+                     for lid in result.letter_ids],
+        })
+        fig_lda = px.scatter(
+            df_lda_scatter, x="x", y="y", color="LDA-Thema",
+            color_discrete_map=lda_color_map,
+            hover_data=["letter_id", "addressee", "year"],
+            height=700,
+            category_orders={"LDA-Thema": [str(t) for t in unique_lda]},
+        )
+        fig_lda.update_traces(marker=dict(size=7, opacity=0.8))
+        st.plotly_chart(fig_lda, use_container_width=True)
+
+        # --- Cross-tabulation heatmap ---
+        st.markdown("### Kreuztabelle: LDA-Thema × Semantischer Cluster")
+        matched = [
+            (lda_t, int(sem_l))
+            for lda_t, sem_l in zip(lda_for_letters, labels)
+            if lda_t != -1 and int(sem_l) != -1
+        ]
+        if matched:
+            lda_arr, sem_arr = zip(*matched)
+            cross = pd.crosstab(
+                pd.Series(lda_arr, name="LDA-Thema"),
+                pd.Series(sem_arr, name="Semantischer Cluster"),
+            )
+            fig_cross = px.imshow(
+                cross,
+                labels={"x": "Semantischer Cluster", "y": "LDA-Thema", "color": "Briefe"},
+                color_continuous_scale="Blues",
+                aspect="auto",
+                height=max(400, len(cross) * 14),
+            )
+            st.plotly_chart(fig_cross, use_container_width=True)
+            st.caption(
+                "Zellen = Anzahl Briefe, die gleichzeitig einem LDA-Thema (Zeile) "
+                "und einem semantischen Cluster (Spalte) zugeordnet sind. Rauschen (−1) ausgeblendet."
+            )
+
+            ami_lda = adjusted_mutual_info_score(list(lda_arr), list(sem_arr))
+            st.metric(
+                "AMI: LDA-Thema vs. Semantischer Cluster",
+                f"{ami_lda:.3f}",
+                help="Adjusted Mutual Information. 0 = keine Übereinstimmung, 1 = perfekte Übereinstimmung.",
+            )
+
+        # --- LDA topic key ---
+        if lda_topics is not None:
+            st.markdown("### LDA-Themen-Schlüssel")
+            display_topics = lda_topics.copy()
+            display_topics.index.name = "Thema"
+            display_topics.columns = ["Gewicht", "Top-Terme"]
+            display_topics["Gewicht"] = display_topics["Gewicht"].round(4)
+            st.dataframe(display_topics, use_container_width=True, height=600)
