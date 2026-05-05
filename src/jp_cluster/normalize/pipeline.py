@@ -115,10 +115,16 @@ def normalize_transnormer_lemma(text: str) -> str:
 
 # ---------- Dispatch ----------
 
+def normalize_transnormer_clean(text: str) -> str:
+    from jp_cluster.clean.cleaner import clean_text
+    return clean_text(normalize_transnormer(text))
+
+
 NORMALIZERS: dict[str, Normalizer] = {
     "raw": normalize_raw,
     "transnormer": normalize_transnormer,
     "transnormer_lemma": normalize_transnormer_lemma,
+    "transnormer_clean": normalize_transnormer_clean,
 }
 
 
@@ -131,12 +137,18 @@ def read_precomputed(letter: Letter, stage: str, norm_base: Path) -> str | None:
 
     ``transnormer_lemma`` piggybacks on the transnormer files and applies
     spaCy lemmatisation on top so that we never have to rerun the model.
+    ``transnormer_clean`` reads from data/processed/cleaned/transnormer/.
     ``raw`` has no pre-computed files — the caller should use ``letter.text_raw``.
     """
-    src_stage = "transnormer" if stage == "transnormer_lemma" else stage
-    if src_stage == "raw":
+    if stage == "raw":
         return None
 
+    if stage == "transnormer_clean":
+        # cleaned files live next to the normalized dir: processed/cleaned/transnormer/
+        cleaned_file = norm_base.parent / "cleaned" / "transnormer" / f"{letter.id}.normalized.cleaned.txt"
+        return cleaned_file.read_text(encoding="utf-8").strip() if cleaned_file.exists() else None
+
+    src_stage = "transnormer" if stage == "transnormer_lemma" else stage
     norm_file = norm_base / src_stage / f"{letter.id}.normalized.txt"
     if not norm_file.exists():
         return None

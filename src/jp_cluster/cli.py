@@ -76,7 +76,7 @@ def _load_letters() -> dict[str, Letter]:
 
 
 @app.command()
-def normalize_chunk(variant_id: str = typer.Option(..., help="z.B. jp_raw_letter_me5l")) -> None:
+def normalize_chunk(variant_id: str = typer.Argument(..., help="Variant ID, e.g. jp_raw_letter_me5l")) -> None:
     """Stage 2 + 3: normalisieren + chunken für eine Variante. Persistiert chunks_<id>.pkl."""
     from jp_cluster.chunk import strategies as ch
     from jp_cluster.normalize import pipeline as norm
@@ -97,7 +97,7 @@ def normalize_chunk(variant_id: str = typer.Option(..., help="z.B. jp_raw_letter
 
 
 @app.command()
-def chunk(variant_id: str = typer.Option(..., help="z.B. jp_raw_letter_me5l")) -> None:
+def chunk(variant_id: str = typer.Argument(..., help="Variant ID, e.g. jp_transnormer_clean_letter_me5l")) -> None:
     """Stage 3 (fast path): chunk pre-computed normalized files → chunks_<id>.pkl.
 
     Reads text from data/processed/normalized/<norm_stage>/<letter_id>.normalized.txt

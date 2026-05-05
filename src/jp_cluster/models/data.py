@@ -25,7 +25,7 @@ class Chunk(BaseModel):
     letter_id: str
     idx: int                             # 0 for whole-letter chunks
     text: str                            # post-normalisation, ready to embed
-    norm_stage: Literal["raw", "transnormer", "transnormer_lemma"]
+    norm_stage: Literal["raw", "transnormer", "transnormer_lemma", "transnormer_clean"]
     chunk_mode: Literal["letter", "sliding_512"]
 
 

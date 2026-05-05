@@ -16,9 +16,10 @@ class Paths(BaseModel):
     processed: Path = DATA / "processed"  # normalised + chunked
     chroma: Path = DATA / "processed" / "chroma"
     eval_out: Path = DATA / "processed" / "eval"
+    cleaned: Path = DATA / "processed" / "cleaned"
 
 
-NormStage = Literal["raw", "transnormer", "transnormer_lemma"]
+NormStage = Literal["raw", "transnormer", "transnormer_lemma", "transnormer_clean"]
 ChunkMode = Literal["letter", "sliding_512"]
 
 # Short, Chroma-safe slugs for known model IDs
@@ -149,7 +150,7 @@ settings = Settings()
 
 # Build the variant matrix from the active config at import time
 VARIANTS: list[Variant] = _build_variants(
-    norms=["raw", "transnormer", "transnormer_lemma"],
+    norms=["raw", "transnormer", "transnormer_lemma", "transnormer_clean"],
     chunks=["letter", "sliding_512"],
     models=settings.embed.models,
 )
