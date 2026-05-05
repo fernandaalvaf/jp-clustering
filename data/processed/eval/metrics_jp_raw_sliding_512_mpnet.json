@@ -1,0 +1,12 @@
+{
+  "n_letters": 98,
+  "n_clusters_hdb": 2,
+  "noise_ratio": 0.9183673469387755,
+  "silhouette_hdbscan": 0.45959529280662537,
+  "silhouette_agglomerative": 0.28386616706848145,
+  "ami_hdb_vs_addressee": 0.0,
+  "ami_hdb_vs_decade": 0.0,
+  "ami_agg_vs_addressee": 0.0,
+  "ami_agg_vs_decade": 0.0,
+  "variant": "jp_raw_sliding_512_mpnet"
+}

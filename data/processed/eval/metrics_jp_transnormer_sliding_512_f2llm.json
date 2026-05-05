@@ -1,0 +1,12 @@
+{
+  "n_letters": 98,
+  "n_clusters_hdb": 3,
+  "noise_ratio": 0.673469387755102,
+  "silhouette_hdbscan": 0.2031552791595459,
+  "silhouette_agglomerative": 0.08104702085256577,
+  "ami_hdb_vs_addressee": 0.0,
+  "ami_hdb_vs_decade": 0.0,
+  "ami_agg_vs_addressee": 0.0,
+  "ami_agg_vs_decade": 0.0,
+  "variant": "jp_transnormer_sliding_512_f2llm"
+}

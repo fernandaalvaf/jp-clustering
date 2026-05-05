@@ -1,0 +1,12 @@
+{
+  "n_letters": 98,
+  "n_clusters_hdb": 2,
+  "noise_ratio": 0.3673469387755102,
+  "silhouette_hdbscan": 0.11720160394906998,
+  "silhouette_agglomerative": 0.04277056083083153,
+  "ami_hdb_vs_addressee": 0.0,
+  "ami_hdb_vs_decade": 0.0,
+  "ami_agg_vs_addressee": 0.0,
+  "ami_agg_vs_decade": 0.0,
+  "variant": "jp_transnormer_lemma_letter_jinav3"
+}

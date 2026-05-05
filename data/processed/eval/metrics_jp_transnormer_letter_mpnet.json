@@ -1,0 +1,12 @@
+{
+  "n_letters": 98,
+  "n_clusters_hdb": 2,
+  "noise_ratio": 0.7346938775510204,
+  "silhouette_hdbscan": 0.4046850800514221,
+  "silhouette_agglomerative": 0.3754076361656189,
+  "ami_hdb_vs_addressee": 0.0,
+  "ami_hdb_vs_decade": 0.0,
+  "ami_agg_vs_addressee": 0.0,
+  "ami_agg_vs_decade": 0.0,
+  "variant": "jp_transnormer_letter_mpnet"
+}

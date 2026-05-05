@@ -1,0 +1,12 @@
+{
+  "n_letters": 98,
+  "n_clusters_hdb": 0,
+  "noise_ratio": 1.0,
+  "silhouette_hdbscan": NaN,
+  "silhouette_agglomerative": 0.3212617039680481,
+  "ami_hdb_vs_addressee": 1.0,
+  "ami_hdb_vs_decade": 1.0,
+  "ami_agg_vs_addressee": 0.0,
+  "ami_agg_vs_decade": 0.0,
+  "variant": "jp_transnormer_lemma_sliding_512_mpnet"
+}
