@@ -78,6 +78,17 @@ if not mdf.empty:
 
 # ---------- Main ----------
 
+letters_path = settings.paths.interim / "letters.jsonl"
+result_path = settings.paths.processed / f"result_{variant_id}.pkl"
+
+if not letters_path.exists():
+    st.warning("No letters found. Run: `python -m jp_cluster.cli ingest data/raw/extracted.json`")
+    st.stop()
+
+if not result_path.exists():
+    st.warning(f"No clustering results for {variant_id}. Run the pipeline first: `ingest → normalize-chunk → embed → cluster`")
+    st.stop()
+
 letters = load_letters()
 result, X, metrics = load_variant(variant_id)
 labels = result.labels_hdbscan if algo == "HDBSCAN" else result.labels_agglomerative
@@ -127,7 +138,7 @@ with tab_net:
                              title=f"{letters[lid].addressee or '?'} · {letters[lid].date_raw or ''}")
         for s, t, w in edges:
             net.add_edge(s, t, value=w)
-        html_path = Path("/tmp/jp_net.html")
+        html_path = Path(settings.paths.processed) / "jp_net.html"
         net.save_graph(str(html_path))
         st.components.v1.html(html_path.read_text(), height=720, scrolling=True)
     except ImportError:

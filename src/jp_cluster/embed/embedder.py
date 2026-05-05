@@ -17,7 +17,7 @@ from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
 from jp_cluster.config import Variant, settings
-from jp_cluster.models.data import Chunk
+from jp_cluster.models import Chunk
 
 
 class Embedder:
